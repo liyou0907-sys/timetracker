@@ -404,10 +404,6 @@
       border-bottom: 1px solid var(--line-light);
     }
 
-    .task-row:focus-within, .time-row:focus-within {
-      background-color: rgba(0, 122, 255, 0.04);
-    }
-
     .task-row:last-child, .time-row:last-child {
       border-bottom: none;
     }
@@ -420,7 +416,6 @@
       color: var(--text-main);
       outline: none;
       padding-right: 6px;
-      height: 100%;
     }
 
     .task-input.completed {
@@ -457,7 +452,6 @@
       color: var(--text-main);
       outline: none;
       padding-left: 8px;
-      height: 100%;
     }
 
     .time-done-toggle {
@@ -665,7 +659,7 @@
     let calYear = new Date().getFullYear();
     let calMonth = new Date().getMonth();
 
-    // 초기 그리드 생성 (체크박스는 탭 이동에서 제외되도록 tabindex="-1" 적용)
+    // 초기 그리드 생성
     function initSheetRows() {
       const tasksEl = document.getElementById('tasksContainer');
       const timelineEl = document.getElementById('timelineContainer');
@@ -677,8 +671,8 @@
         const taskRow = document.createElement('div');
         taskRow.className = 'task-row';
         taskRow.innerHTML = `
-          <input type="text" class="task-input" id="task_text_${i}" data-col="task" data-row="${i}" oninput="saveCurrentData()">
-          <input type="checkbox" class="task-check" id="task_chk_${i}" tabindex="-1" onchange="toggleTaskStyle(${i}); saveCurrentData()">
+          <input type="text" class="task-input" id="task_text_${i}" oninput="saveCurrentData()">
+          <input type="checkbox" class="task-check" id="task_chk_${i}" onchange="toggleTaskStyle(${i}); saveCurrentData()">
         `;
         tasksEl.appendChild(taskRow);
 
@@ -689,140 +683,11 @@
         timeRow.className = 'time-row';
         timeRow.innerHTML = `
           <div class="time-label">${h1}:00-${h2}:00</div>
-          <input type="text" class="time-input" id="time_text_${i}" data-col="time" data-row="${i}" oninput="saveCurrentData()">
+          <input type="text" class="time-input" id="time_text_${i}" oninput="saveCurrentData()">
           <div class="time-done-toggle" id="time_fill_${i}" title="클릭하여 완료 시간 색칠 (총 시간 자동 계산)" onclick="toggleTimeFill(${i})"></div>
         `;
         timelineEl.appendChild(timeRow);
       }
-
-      setupKeyboardNavigation();
-    }
-
-    // 포커스 이동 및 커서를 글자 맨 끝으로 보내는 헬퍼 함수
-    function focusAndMoveCursorToEnd(el) {
-      if (!el) return;
-      el.focus();
-      if (typeof el.selectionStart === 'number') {
-        const len = el.value.length;
-        el.setSelectionRange(len, len);
-      }
-    }
-
-    // 키보드(엔터, 탭, 방향키) 이동 제어
-    function setupKeyboardNavigation() {
-      // 1. 상단 헤더 칸 키보드 이동 연결
-      const headerMap = {
-        displayDateText: { down: 'commentInput', right: 'ddayInput' },
-        ddayInput:       { down: 'totalTimeInput', left: 'displayDateText' },
-        commentInput:    { up: 'displayDateText', down: 'task_text_0', right: 'totalTimeInput' },
-        totalTimeInput:  { up: 'ddayInput', down: 'time_text_0', left: 'commentInput' }
-      };
-
-      Object.keys(headerMap).forEach(id => {
-        const el = document.getElementById(id);
-        const nav = headerMap[id];
-
-        el.addEventListener('keydown', e => {
-          if (e.isComposing) return; // 한글 조합 중 중복 이동 방지
-
-          if ((e.key === 'Enter' || e.key === 'ArrowDown') && nav.down) {
-            e.preventDefault();
-            focusAndMoveCursorToEnd(document.getElementById(nav.down));
-          } else if (e.key === 'ArrowUp' && nav.up) {
-            e.preventDefault();
-            focusAndMoveCursorToEnd(document.getElementById(nav.up));
-          } else if (e.key === 'ArrowRight' && nav.right && el.selectionStart === el.value.length) {
-            e.preventDefault();
-            focusAndMoveCursorToEnd(document.getElementById(nav.right));
-          } else if (e.key === 'ArrowLeft' && nav.left && el.selectionStart === 0) {
-            e.preventDefault();
-            focusAndMoveCursorToEnd(document.getElementById(nav.left));
-          }
-        });
-      });
-
-      // 2. 본문 18줄 (TASKS <-> TIMELINE) 키보드 이동 연결
-      for (let i = 0; i < ROW_COUNT; i++) {
-        const taskInput = document.getElementById(`task_text_${i}`);
-        const timeInput = document.getElementById(`time_text_${i}`);
-
-        [taskInput, timeInput].forEach(input => {
-          input.addEventListener('keydown', e => {
-            if (e.isComposing) return; // 한글 입력 조합 중 엔터 충돌 방지
-
-            const isTask = input.dataset.col === 'task';
-            const row = parseInt(input.dataset.row, 10);
-
-            // [Enter] 또는 [아래 방향키]: 바로 아랫줄로 이동
-            if (e.key === 'Enter' || e.key === 'ArrowDown') {
-              e.preventDefault();
-              if (row < ROW_COUNT - 1) {
-                const nextId = isTask ? `task_text_${row + 1}` : `time_text_${row + 1}`;
-                focusAndMoveCursorToEnd(document.getElementById(nextId));
-              } else {
-                // 마지막 줄에서는 하단 MEMO 칸으로 이동
-                focusAndMoveCursorToEnd(document.getElementById('memoInput'));
-              }
-            }
-            // [위 방향키]: 바로 윗줄로 이동
-            else if (e.key === 'ArrowUp') {
-              e.preventDefault();
-              if (row > 0) {
-                const prevId = isTask ? `task_text_${row - 1}` : `time_text_${row - 1}`;
-                focusAndMoveCursorToEnd(document.getElementById(prevId));
-              } else {
-                // 첫 줄에서는 상단 COMMENT / TOTAL TIME 칸으로 이동
-                const topId = isTask ? 'commentInput' : 'totalTimeInput';
-                focusAndMoveCursorToEnd(document.getElementById(topId));
-              }
-            }
-            // [오른쪽 방향키]: 커서가 맨 끝에 있을 때 좌측 할 일 -> 우측 시간표로 이동
-            else if (e.key === 'ArrowRight' && isTask && input.selectionStart === input.value.length) {
-              e.preventDefault();
-              focusAndMoveCursorToEnd(document.getElementById(`time_text_${row}`));
-            }
-            // [왼쪽 방향키]: 커서가 맨 앞에 있을 때 우측 시간표 -> 좌측 할 일로 이동
-            else if (e.key === 'ArrowLeft' && !isTask && input.selectionStart === 0) {
-              e.preventDefault();
-              focusAndMoveCursorToEnd(document.getElementById(`task_text_${row}`));
-            }
-            // [Tab]: 좌측 할 일 <-> 우측 시간표 간 빠른 전환
-            else if (e.key === 'Tab') {
-              if (!e.shiftKey && isTask) {
-                e.preventDefault();
-                focusAndMoveCursorToEnd(document.getElementById(`time_text_${row}`));
-              } else if (!e.shiftKey && !isTask) {
-                e.preventDefault();
-                if (row < ROW_COUNT - 1) {
-                  focusAndMoveCursorToEnd(document.getElementById(`task_text_${row + 1}`));
-                } else {
-                  focusAndMoveCursorToEnd(document.getElementById('memoInput'));
-                }
-              } else if (e.shiftKey && !isTask) {
-                e.preventDefault();
-                focusAndMoveCursorToEnd(document.getElementById(`task_text_${row}`));
-              } else if (e.shiftKey && isTask) {
-                e.preventDefault();
-                if (row > 0) {
-                  focusAndMoveCursorToEnd(document.getElementById(`time_text_${row - 1}`));
-                } else {
-                  focusAndMoveCursorToEnd(document.getElementById('totalTimeInput'));
-                }
-              }
-            }
-          });
-        });
-      }
-
-      // 3. 하단 MEMO 칸에서 맨 첫 줄에 있을 때 위 방향키를 누르면 마지막 줄로 복귀
-      const memoEl = document.getElementById('memoInput');
-      memoEl.addEventListener('keydown', e => {
-        if (e.isComposing) return;
-        if (e.key === 'ArrowUp' && memoEl.selectionStart === 0) {
-          e.preventDefault();
-          focusAndMoveCursorToEnd(document.getElementById(`task_text_${ROW_COUNT - 1}`));
-        }
-      });
     }
 
     function toggleTaskStyle(idx) {
@@ -884,4 +749,215 @@
       for (let i = 0; i < ROW_COUNT; i++) {
         const tText = dayData?.tasks?.[i]?.text || '';
         const tChk = dayData?.tasks?.[i]?.done || false;
-        document.
+        document.getElementById(`task_text_${i}`).value = tText;
+        document.getElementById(`task_chk_${i}`).checked = tChk;
+        toggleTaskStyle(i);
+
+        const sText = dayData?.schedule?.[i]?.text || '';
+        const sFill = dayData?.schedule?.[i]?.filled || false;
+        document.getElementById(`time_text_${i}`).value = sText;
+        const fillEl = document.getElementById(`time_fill_${i}`);
+        if (sFill) fillEl.classList.add('filled');
+        else fillEl.classList.remove('filled');
+      }
+
+      renderArchiveFeed();
+      renderCalendar();
+    }
+
+    function isDayEmpty(data) {
+      if (!data) return true;
+      if (data.dday || data.comment || data.totalTime || data.memo) return false;
+      if (data.tasks.some(t => t.text.trim() !== '' || t.done)) return false;
+      if (data.schedule.some(s => s.text.trim() !== '' || s.filled)) return false;
+      return true;
+    }
+
+    function saveCurrentData() {
+      if (!currentDateStr) return;
+
+      const tasks = [];
+      const schedule = [];
+      for (let i = 0; i < ROW_COUNT; i++) {
+        tasks.push({
+          text: document.getElementById(`task_text_${i}`).value,
+          done: document.getElementById(`task_chk_${i}`).checked
+        });
+        schedule.push({
+          text: document.getElementById(`time_text_${i}`).value,
+          filled: document.getElementById(`time_fill_${i}`).classList.contains('filled')
+        });
+      }
+
+      const dayData = {
+        displayDate: document.getElementById('displayDateText').value,
+        dday: document.getElementById('ddayInput').value,
+        comment: document.getElementById('commentInput').value,
+        totalTime: document.getElementById('totalTimeInput').value,
+        memo: document.getElementById('memoInput').value,
+        tasks,
+        schedule,
+        updatedAt: Date.now()
+      };
+
+      const allData = getAllPlanners();
+      if (isDayEmpty(dayData)) {
+        delete allData[currentDateStr];
+      } else {
+        allData[currentDateStr] = dayData;
+      }
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(allData));
+      document.getElementById('saveStatus').textContent = '저장 완료 ✓';
+      renderArchiveFeed();
+      renderCalendar();
+    }
+
+    // 좌측 피드 렌더링 (아이폰 일기 앱 카드 스타일)
+    function renderArchiveFeed() {
+      const feedEl = document.getElementById('feedView');
+      const allData = getAllPlanners();
+      const dates = Object.keys(allData).sort((a, b) => b.localeCompare(a));
+
+      document.getElementById('totalSavedCount').textContent = `${dates.length}일 기록됨`;
+
+      if (dates.length === 0) {
+        feedEl.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:13px; padding: 40px 10px;">작성된 플래너가 없습니다.<br>오른쪽 시트에 일정을 입력하면 자동으로 카드에 모아집니다.</div>`;
+        return;
+      }
+
+      feedEl.innerHTML = dates.map(dateStr => {
+        const item = allData[dateStr];
+        const doneTasks = item.tasks.filter(t => t.done && t.text.trim() !== '').length;
+        const totalTasks = item.tasks.filter(t => t.text.trim() !== '').length;
+        const filledHours = item.schedule.filter(s => s.text.trim() !== '' || s.filled).length;
+        const previewComment = item.comment || item.schedule.find(s => s.text.trim() !== '')?.text || '작성된 코멘트 없음';
+
+        return `
+          <div class="journal-card ${dateStr === currentDateStr ? 'active' : ''}" onclick="loadPlannerByDate('${dateStr}')">
+            <div class="journal-card-header">
+              <span class="journal-date">${item.displayDate || dateStr}</span>
+              ${item.dday ? `<span class="journal-dday">${item.dday}</span>` : ''}
+            </div>
+            <div class="journal-comment">${previewComment}</div>
+            <div class="journal-stats">
+              <span>✅ 할 일 ${doneTasks}/${totalTasks}</span>
+              <span>⏰ 일정 ${filledHours}칸</span>
+              ${item.totalTime ? `<span>🔥 ${item.totalTime}</span>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 캘린더 렌더링
+    function renderCalendar() {
+      const grid = document.getElementById('calGrid');
+      document.getElementById('calMonthLabel').textContent = `${calYear}. ${String(calMonth + 1).padStart(2, '0')}`;
+      grid.innerHTML = '';
+
+      const dayHeaders = ['일', '월', '화', '수', '목', '금', '토'];
+      dayHeaders.forEach(d => {
+        const h = document.createElement('div');
+        h.className = 'cal-day-header';
+        h.textContent = d;
+        grid.appendChild(h);
+      });
+
+      const firstDay = new Date(calYear, calMonth, 1).getDay();
+      const lastDate = new Date(calYear, calMonth + 1, 0).getDate();
+      const allData = getAllPlanners();
+
+      for (let i = 0; i < firstDay; i++) {
+        grid.appendChild(document.createElement('div'));
+      }
+
+      for (let d = 1; d <= lastDate; d++) {
+        const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const cell = document.createElement('div');
+        cell.className = 'cal-day';
+        if (dateStr === currentDateStr) cell.classList.add('selected');
+        if (allData[dateStr]) cell.classList.add('has-data');
+        cell.textContent = d;
+        cell.onclick = () => loadPlannerByDate(dateStr);
+        grid.appendChild(cell);
+      }
+    }
+
+    function changeCalendarMonth(delta) {
+      calMonth += delta;
+      if (calMonth < 0) { calMonth = 11; calYear--; }
+      if (calMonth > 11) { calMonth = 0; calYear++; }
+      renderCalendar();
+    }
+
+    function switchSidebarTab(tab) {
+      const tabs = document.querySelectorAll('.view-tab');
+      tabs[0].classList.toggle('active', tab === 'feed');
+      tabs[1].classList.toggle('active', tab === 'calendar');
+      document.getElementById('feedView').style.display = tab === 'feed' ? 'block' : 'none';
+      document.getElementById('calendarView').style.display = tab === 'calendar' ? 'block' : 'none';
+    }
+
+    function moveDay(delta) {
+      const [y, m, d] = currentDateStr.split('-').map(Number);
+      const dt = new Date(y, m - 1, d + delta);
+      const nextStr = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+      loadPlannerByDate(nextStr);
+    }
+
+    function goToday() {
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      calYear = now.getFullYear();
+      calMonth = now.getMonth();
+      loadPlannerByDate(todayStr);
+    }
+
+    function clearCurrentDay() {
+      if (!confirm('해당 날짜의 플래너 내용을 모두 지우시겠습니까?')) return;
+      const allData = getAllPlanners();
+      delete allData[currentDateStr];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(allData));
+      loadPlannerByDate(currentDateStr);
+    }
+
+    // 백업 내보내기 & 불러오기
+    function exportBackup() {
+      const dataStr = localStorage.getItem(STORAGE_KEY) || '{}';
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `study-planner-backup-${currentDateStr}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importBackup(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const imported = JSON.parse(e.target.result);
+          const existing = getAllPlanners();
+          const merged = { ...existing, ...imported };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+          loadPlannerByDate(currentDateStr);
+          alert('백업 데이터를 성공적으로 불러왔습니다.');
+        } catch (err) {
+          alert('올바른 JSON 백업 파일이 아닙니다.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // 초기 실행
+    window.addEventListener('DOMContentLoaded', () => {
+      initSheetRows();
+      goToday();
+    });
+  </script>
+</body>
+</html>
