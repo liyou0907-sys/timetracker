@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Study Planner</title>
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    :root {
+      --bg-app: #f2f2f7;
+      --paper-bg: #fdfcf7;
+      --line-color: #d8d6cf;
+      --line-light: #eceae2;
+      --text-main: #2c2c2e;
+      --text-muted: #8e8e93;
+      --accent: #3a3a3c;
+      --primary: #007aff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-app);
+      color: var(--text-main);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ==================== 좌측 사이드바 (아카이브 & 캘린더) ==================== */
+    .sidebar {
+      width: 340px;
+      background: #ffffff;
+      border-right: 1px solid #e5e5ea;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      z-index: 10;
+    }
+
+    .sidebar-header {
+      padding: 20px;
+      border-bottom: 1px solid #e5e5ea;
+    }
+
+    .sidebar-header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .view-tabs {
+      display: flex;
+      background: #efeff4;
+      border-radius: 8px;
+      padding: 3px;
+    }
+
+    .view-tab {
+      flex: 1;
+      text-align: center;
+      padding: 6px 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .view-tab.active {
+      background: #ffffff;
+      color: var(--text-main);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* 아카이브 리스트 (아이폰 일기 앱 스타일) */
+    .archive-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .journal-card {
+      background: #ffffff;
+      border: 1px solid #e5e5ea;
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+    }
+
+    .journal-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    .journal-card.active {
+      border-color: var(--primary);
+      background: #f5f9ff;
+    }
+
+    .journal-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .journal-date {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .journal-dday {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+      background: rgba(0, 122, 255, 0.1);
+      padding: 2px 7px;
+      border-radius: 10px;
+    }
+
+    .journal-comment {
+      font-size: 13px;
+      color: #48484a;
+      margin-bottom: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .journal-stats {
+      display: flex;
+      gap: 10px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* 미니 캘린더 뷰 */
+    .calendar-box {
+      display: none;
+    }
+
+    .cal-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .cal-nav button {
+      background: none;
+      border: 1px solid #d1d1d6;
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+    }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      text-align: center;
+      font-size: 12px;
+    }
+
+    .cal-day-header {
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 6px 0;
+    }
+
+    .cal-day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      cursor: pointer;
+      position: relative;
+      font-weight: 500;
+    }
+
+    .cal-day:hover {
+      background: #f2f2f7;
+    }
+
+    .cal-day.selected {
+      background: var(--primary);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .cal-day.has-data::after {
+      content: '';
+      width: 4px;
+      height: 4px;
+      background: var(--primary);
+      border-radius: 50%;
+      position: absolute;
+      bottom: 4px;
+    }
+
+    .cal-day.selected.has-data::after {
+      background: #fff;
+    }
+
+    .sidebar-footer {
+      padding: 12px 16px;
+      border-top: 1px solid #e5e5ea;
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-util {
+      flex: 1;
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid #d1d1d6;
+      background: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-main);
+    }
+
+    .btn-util:hover {
+      background: #f2f2f7;
+    }
+
+    /* ==================== 우측 메인 영역 (툴바 & A4 플래너) ==================== */
+    .main-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow-y: auto;
+    }
+
+    .toolbar {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(10px);
+      padding: 12px 28px;
+      border-bottom: 1px solid #e5e5ea;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .date-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .date-controls input[type="date"] {
+      padding: 6px 10px;
+      border: 1px solid #d1d1d6;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .btn-action {
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid #d1d1d6;
+      background: #fff;
+      transition: 0.15s;
+    }
+
+    .btn-action.primary {
+      background: var(--text-main);
+      color: #fff;
+      border-color: var(--text-main);
+    }
+
+    .btn-action:hover {
+      opacity: 0.85;
+    }
+
+    .workspace {
+      padding: 28px;
+      display: flex;
+      justify-content: center;
+    }
+
+    /* ==================== A4 플래너 용지 (모트모트 스타일) ==================== */
+    .a4-sheet {
+      width: 210mm;
+      height: 297mm;
+      background-color: var(--paper-bg);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      padding: 14mm 15mm 12mm 15mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    /* 상단 헤더 (날짜, D-DAY, COMMENT, TOTAL TIME) */
+    .sheet-header {
+      display: flex;
+      flex-direction: column;
+      gap: 3.5mm;
+      margin-bottom: 4mm;
+    }
+
+    .header-row {
+      display: grid;
+      grid-template-columns: 62% 35%;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .field-box {
+      border-bottom: 1.2px solid var(--line-color);
+      padding-bottom: 1.5mm;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .field-label {
+      font-size: 8.5pt;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .field-input {
+      border: none;
+      background: transparent;
+      width: 100%;
+      font-size: 10.5pt;
+      font-weight: 600;
+      color: var(--text-main);
+      outline: none;
+    }
+
+    /* 중단 바디 (TASKS + TIMELINE 06:00 ~ 24:00) */
+    .sheet-body {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 48% 49%;
+      justify-content: space-between;
+      border-top: 1.2px solid var(--line-color);
+      border-bottom: 1.2px solid var(--line-color);
+      padding: 2.5mm 0;
+      overflow: hidden;
+    }
+
+    .section-col {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .section-title {
+      font-size: 8.5pt;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      padding-bottom: 1.5mm;
+      border-bottom: 1px solid var(--line-color);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .rows-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 18개 행 균등 분할 (06시~24시 1시간 간격) */
+    .task-row, .time-row {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--line-light);
+    }
+
+    .task-row:focus-within, .time-row:focus-within {
+      background-color: rgba(0, 122, 255, 0.04);
+    }
+
+    .task-row:last-child, .time-row:last-child {
+      border-bottom: none;
+    }
+
+    .task-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 9.5pt;
+      color: var(--text-main);
+      outline: none;
+      padding-right: 6px;
+      height: 100%;
+    }
+
+    .task-input.completed {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+
+    .task-check {
+      width: 13px;
+      height: 13px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* 타임라인 행 (06:00 ~ 24:00) */
+    .time-label {
+      width: 68px;
+      font-size: 8pt;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-right: 1px solid var(--line-light);
+      height: 100%;
+      display: flex;
+      align-items: center;
+      letter-spacing: -0.2px;
+      flex-shrink: 0;
+    }
+
+    .time-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 9.5pt;
+      color: var(--text-main);
+      outline: none;
+      padding-left: 8px;
+      height: 100%;
+    }
+
+    .time-done-toggle {
+      width: 14px;
+      height: 100%;
+      border-left: 1px solid var(--line-light);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .time-done-toggle.filled {
+      background-color: #d1cfc7;
+    }
+
+    /* 하단 메모 및 브랜드 로고 */
+    .sheet-footer {
+      margin-top: 3.5mm;
+      height: 34mm;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .memo-header {
+      font-size: 8.5pt;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      margin-bottom: 1.5mm;
+    }
+
+    .memo-area {
+      flex: 1;
+      width: 100%;
+      border: none;
+      background: transparent;
+      resize: none;
+      outline: none;
+      font-size: 9.5pt;
+      line-height: 1.6;
+      color: var(--text-main);
+      background-image: linear-gradient(transparent, transparent calc(1.6em - 1px), var(--line-light) 0);
+      background-size: 100% 1.6em;
+    }
+
+    .brand-mark {
+      text-align: right;
+      font-size: 8.5pt;
+      font-weight: 700;
+      color: #b5b3ac;
+      letter-spacing: 0.8px;
+      margin-top: 1mm;
+    }
+
+    /* ==================== A4 인쇄(출력) 전용 미디어 쿼리 ==================== */
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+
+      body {
+        background: none;
+        height: auto;
+        overflow: visible;
+      }
+
+      .sidebar, .toolbar {
+        display: none !important;
+      }
+
+      .main-area, .workspace {
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: visible !important;
+      }
+
+      .a4-sheet {
+        box-shadow: none !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        page-break-after: always;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 좌측 사이드바: 아이폰 일기 앱 스타일 피드 & 캘린더 -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1>
+        <span>📚 플래너 보관함</span>
+        <span id="totalSavedCount" style="font-size: 12px; color: var(--text-muted); font-weight: 500;">0일 기록됨</span>
+      </h1>
+      <div class="view-tabs">
+        <div class="view-tab active" onclick="switchSidebarTab('feed')">일기장 피드</div>
+        <div class="view-tab" onclick="switchSidebarTab('calendar')">캘린더</div>
+      </div>
+    </div>
+
+    <div class="archive-container">
+      <!-- 피드 뷰 -->
+      <div id="feedView"></div>
+
+      <!-- 캘린더 뷰 -->
+      <div id="calendarView" class="calendar-box">
+        <div class="cal-nav">
+          <button onclick="changeCalendarMonth(-1)">◀</button>
+          <span id="calMonthLabel">2026. 11</span>
+          <button onclick="changeCalendarMonth(1)">▶</button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="btn-util" onclick="exportBackup()">백업 저장(JSON)</button>
+      <button class="btn-util" onclick="document.getElementById('importInput').click()">백업 불러오기</button>
+      <input type="file" id="importInput" style="display:none" accept=".json" onchange="importBackup(event)">
+    </div>
+  </aside>
+
+  <!-- 우측 메인 영역 -->
+  <main class="main-area">
+    <header class="toolbar">
+      <div class="date-controls">
+        <button class="btn-action" onclick="moveDay(-1)">◀ 이전 날</button>
+        <input type="date" id="datePicker" onchange="loadPlannerByDate(this.value)">
+        <button class="btn-action" onclick="moveDay(1)">다음 날 ▶</button>
+        <button class="btn-action" onclick="goToday()">오늘</button>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <span id="saveStatus" style="font-size: 12px; color: var(--text-muted);">자동 저장됨</span>
+        <button class="btn-action" onclick="clearCurrentDay()">초기화</button>
+        <button class="btn-action primary" onclick="window.print()">🖨️ A4 인쇄 / PDF 저장</button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <section class="a4-sheet">
+        <!-- 상단: 날짜 / D-DAY / COMMENT / TOTAL TIME -->
+        <div class="sheet-header">
+          <div class="header-row">
+            <div class="field-box">
+              <span class="field-label">YEAR / MONTH / DAY</span>
+              <input type="text" id="displayDateText" class="field-input" placeholder="2026 / 11 / 10 (TUE)" oninput="saveCurrentData()">
+            </div>
+            <div class="field-box">
+              <span class="field-label">D - DAY</span>
+              <input type="text" id="ddayInput" class="field-input" placeholder="D - 00" oninput="saveCurrentData()">
+            </div>
+          </div>
+          <div class="header-row">
+            <div class="field-box">
+              <span class="field-label">COMMENT</span>
+              <input type="text" id="commentInput" class="field-input" placeholder="오늘의 다짐이나 핵심 목표를 적어보세요" oninput="saveCurrentData()">
+            </div>
+            <div class="field-box">
+              <span class="field-label">TOTAL TIME</span>
+              <input type="text" id="totalTimeInput" class="field-input" placeholder="0H 00M" oninput="saveCurrentData()">
+            </div>
+          </div>
+        </div>
+
+        <!-- 중단: 좌측 TASKS (18줄) / 우측 SCHEDULE 06:00~24:00 (18칸) -->
+        <div class="sheet-body">
+          <!-- 좌측 TASKS -->
+          <div class="section-col">
+            <div class="section-title">
+              <span>TASKS</span>
+              <span>DONE</span>
+            </div>
+            <div class="rows-wrapper" id="tasksContainer"></div>
+          </div>
+
+          <!-- 우측 TIMELINE (06:00 ~ 24:00, 1시간 간격) -->
+          <div class="section-col">
+            <div class="section-title">
+              <span>TIMELINE (06:00 - 24:00)</span>
+              <span>CHK</span>
+            </div>
+            <div class="rows-wrapper" id="timelineContainer"></div>
+          </div>
+        </div>
+
+        <!-- 하단: MEMO -->
+        <div class="sheet-footer">
+          <div class="memo-header">MEMO</div>
+          <textarea id="memoInput" class="memo-area" placeholder="자유롭게 메모나 오답 노트, 피드백을 기록하세요." oninput="saveCurrentData()"></textarea>
+          <div class="brand-mark">motemote style daily</div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const STORAGE_KEY = 'MOTEMOTE_DAILY_PLANNERS_V1';
+    const START_HOUR = 6;
+    const END_HOUR = 24; // 06:00 ~ 24:00 (18개 슬롯)
+    const ROW_COUNT = END_HOUR - START_HOUR;
+
+    let currentDateStr = '';
+    let calYear = new Date().getFullYear();
+    let calMonth = new Date().getMonth();
+
+    // 초기 그리드 생성 (체크박스는 탭 이동에서 제외되도록 tabindex="-1" 적용)
+    function initSheetRows() {
+      const tasksEl = document.getElementById('tasksContainer');
+      const timelineEl = document.getElementById('timelineContainer');
+      tasksEl.innerHTML = '';
+      timelineEl.innerHTML = '';
+
+      for (let i = 0; i < ROW_COUNT; i++) {
+        // 1. 좌측 TASKS 행 생성
+        const taskRow = document.createElement('div');
+        taskRow.className = 'task-row';
+        taskRow.innerHTML = `
+          <input type="text" class="task-input" id="task_text_${i}" data-col="task" data-row="${i}" oninput="saveCurrentData()">
+          <input type="checkbox" class="task-check" id="task_chk_${i}" tabindex="-1" onchange="toggleTaskStyle(${i}); saveCurrentData()">
+        `;
+        tasksEl.appendChild(taskRow);
+
+        // 2. 우측 TIMELINE 행 생성 (06:00 ~ 24:00)
+        const h1 = String(START_HOUR + i).padStart(2, '0');
+        const h2 = String(START_HOUR + i + 1).padStart(2, '0');
+        const timeRow = document.createElement('div');
+        timeRow.className = 'time-row';
+        timeRow.innerHTML = `
+          <div class="time-label">${h1}:00-${h2}:00</div>
+          <input type="text" class="time-input" id="time_text_${i}" data-col="time" data-row="${i}" oninput="saveCurrentData()">
+          <div class="time-done-toggle" id="time_fill_${i}" title="클릭하여 완료 시간 색칠 (총 시간 자동 계산)" onclick="toggleTimeFill(${i})"></div>
+        `;
+        timelineEl.appendChild(timeRow);
+      }
+
+      setupKeyboardNavigation();
+    }
+
+    // 포커스 이동 및 커서를 글자 맨 끝으로 보내는 헬퍼 함수
+    function focusAndMoveCursorToEnd(el) {
+      if (!el) return;
+      el.focus();
+      if (typeof el.selectionStart === 'number') {
+        const len = el.value.length;
+        el.setSelectionRange(len, len);
+      }
+    }
+
+    // 키보드(엔터, 탭, 방향키) 이동 제어
+    function setupKeyboardNavigation() {
+      // 1. 상단 헤더 칸 키보드 이동 연결
+      const headerMap = {
+        displayDateText: { down: 'commentInput', right: 'ddayInput' },
+        ddayInput:       { down: 'totalTimeInput', left: 'displayDateText' },
+        commentInput:    { up: 'displayDateText', down: 'task_text_0', right: 'totalTimeInput' },
+        totalTimeInput:  { up: 'ddayInput', down: 'time_text_0', left: 'commentInput' }
+      };
+
+      Object.keys(headerMap).forEach(id => {
+        const el = document.getElementById(id);
+        const nav = headerMap[id];
+
+        el.addEventListener('keydown', e => {
+          if (e.isComposing) return; // 한글 조합 중 중복 이동 방지
+
+          if ((e.key === 'Enter' || e.key === 'ArrowDown') && nav.down) {
+            e.preventDefault();
+            focusAndMoveCursorToEnd(document.getElementById(nav.down));
+          } else if (e.key === 'ArrowUp' && nav.up) {
+            e.preventDefault();
+            focusAndMoveCursorToEnd(document.getElementById(nav.up));
+          } else if (e.key === 'ArrowRight' && nav.right && el.selectionStart === el.value.length) {
+            e.preventDefault();
+            focusAndMoveCursorToEnd(document.getElementById(nav.right));
+          } else if (e.key === 'ArrowLeft' && nav.left && el.selectionStart === 0) {
+            e.preventDefault();
+            focusAndMoveCursorToEnd(document.getElementById(nav.left));
+          }
+        });
+      });
+
+      // 2. 본문 18줄 (TASKS <-> TIMELINE) 키보드 이동 연결
+      for (let i = 0; i < ROW_COUNT; i++) {
+        const taskInput = document.getElementById(`task_text_${i}`);
+        const timeInput = document.getElementById(`time_text_${i}`);
+
+        [taskInput, timeInput].forEach(input => {
+          input.addEventListener('keydown', e => {
+            if (e.isComposing) return; // 한글 입력 조합 중 엔터 충돌 방지
+
+            const isTask = input.dataset.col === 'task';
+            const row = parseInt(input.dataset.row, 10);
+
+            // [Enter] 또는 [아래 방향키]: 바로 아랫줄로 이동
+            if (e.key === 'Enter' || e.key === 'ArrowDown') {
+              e.preventDefault();
+              if (row < ROW_COUNT - 1) {
+                const nextId = isTask ? `task_text_${row + 1}` : `time_text_${row + 1}`;
+                focusAndMoveCursorToEnd(document.getElementById(nextId));
+              } else {
+                // 마지막 줄에서는 하단 MEMO 칸으로 이동
+                focusAndMoveCursorToEnd(document.getElementById('memoInput'));
+              }
+            }
+            // [위 방향키]: 바로 윗줄로 이동
+            else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              if (row > 0) {
+                const prevId = isTask ? `task_text_${row - 1}` : `time_text_${row - 1}`;
+                focusAndMoveCursorToEnd(document.getElementById(prevId));
+              } else {
+                // 첫 줄에서는 상단 COMMENT / TOTAL TIME 칸으로 이동
+                const topId = isTask ? 'commentInput' : 'totalTimeInput';
+                focusAndMoveCursorToEnd(document.getElementById(topId));
+              }
+            }
+            // [오른쪽 방향키]: 커서가 맨 끝에 있을 때 좌측 할 일 -> 우측 시간표로 이동
+            else if (e.key === 'ArrowRight' && isTask && input.selectionStart === input.value.length) {
+              e.preventDefault();
+              focusAndMoveCursorToEnd(document.getElementById(`time_text_${row}`));
+            }
+            // [왼쪽 방향키]: 커서가 맨 앞에 있을 때 우측 시간표 -> 좌측 할 일로 이동
+            else if (e.key === 'ArrowLeft' && !isTask && input.selectionStart === 0) {
+              e.preventDefault();
+              focusAndMoveCursorToEnd(document.getElementById(`task_text_${row}`));
+            }
+            // [Tab]: 좌측 할 일 <-> 우측 시간표 간 빠른 전환
+            else if (e.key === 'Tab') {
+              if (!e.shiftKey && isTask) {
+                e.preventDefault();
+                focusAndMoveCursorToEnd(document.getElementById(`time_text_${row}`));
+              } else if (!e.shiftKey && !isTask) {
+                e.preventDefault();
+                if (row < ROW_COUNT - 1) {
+                  focusAndMoveCursorToEnd(document.getElementById(`task_text_${row + 1}`));
+                } else {
+                  focusAndMoveCursorToEnd(document.getElementById('memoInput'));
+                }
+              } else if (e.shiftKey && !isTask) {
+                e.preventDefault();
+                focusAndMoveCursorToEnd(document.getElementById(`task_text_${row}`));
+              } else if (e.shiftKey && isTask) {
+                e.preventDefault();
+                if (row > 0) {
+                  focusAndMoveCursorToEnd(document.getElementById(`time_text_${row - 1}`));
+                } else {
+                  focusAndMoveCursorToEnd(document.getElementById('totalTimeInput'));
+                }
+              }
+            }
+          });
+        });
+      }
+
+      // 3. 하단 MEMO 칸에서 맨 첫 줄에 있을 때 위 방향키를 누르면 마지막 줄로 복귀
+      const memoEl = document.getElementById('memoInput');
+      memoEl.addEventListener('keydown', e => {
+        if (e.isComposing) return;
+        if (e.key === 'ArrowUp' && memoEl.selectionStart === 0) {
+          e.preventDefault();
+          focusAndMoveCursorToEnd(document.getElementById(`task_text_${ROW_COUNT - 1}`));
+        }
+      });
+    }
+
+    function toggleTaskStyle(idx) {
+      const input = document.getElementById(`task_text_${idx}`);
+      const chk = document.getElementById(`task_chk_${idx}`);
+      if (chk.checked) {
+        input.classList.add('completed');
+      } else {
+        input.classList.remove('completed');
+      }
+    }
+
+    function toggleTimeFill(idx) {
+      const box = document.getElementById(`time_fill_${idx}`);
+      box.classList.toggle('filled');
+      updateAutoTotalTime();
+      saveCurrentData();
+    }
+
+    function updateAutoTotalTime() {
+      let filledCount = 0;
+      for (let i = 0; i < ROW_COUNT; i++) {
+        if (document.getElementById(`time_fill_${i}`).classList.contains('filled')) {
+          filledCount++;
+        }
+      }
+      const totalInput = document.getElementById('totalTimeInput');
+      if (filledCount > 0) {
+        totalInput.value = `${filledCount}H 00M`;
+      }
+    }
+
+    function getAllPlanners() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    }
+
+    function formatDisplayDate(dateStr) {
+      const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dateObj = new Date(y, m - 1, d);
+      const dayName = days[dateObj.getDay()];
+      return `${y} / ${String(m).padStart(2, '0')} / ${String(d).padStart(2, '0')} (${dayName})`;
+    }
+
+    function loadPlannerByDate(dateStr) {
+      currentDateStr = dateStr;
+      document.getElementById('datePicker').value = dateStr;
+
+      const allData = getAllPlanners();
+      const dayData = allData[dateStr];
+
+      document.getElementById('displayDateText').value = dayData?.displayDate || formatDisplayDate(dateStr);
+      document.getElementById('ddayInput').value = dayData?.dday || '';
+      document.getElementById('commentInput').value = dayData?.comment || '';
+      document.getElementById('totalTimeInput').value = dayData?.totalTime || '';
+      document.getElementById('memoInput').value = dayData?.memo || '';
+
+      for (let i = 0; i < ROW_COUNT; i++) {
+        const tText = dayData?.tasks?.[i]?.text || '';
+        const tChk = dayData?.tasks?.[i]?.done || false;
+        document.
